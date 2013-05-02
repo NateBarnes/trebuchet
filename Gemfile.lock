@@ -2,6 +2,8 @@ GEM
   remote: https://www.rubygems.org/
   specs:
     builder (3.2.0)
+    celluloid (0.13.0)
+      timers (>= 1.0.0)
     excon (0.20.1)
     fog (1.10.1)
       builder
@@ -21,9 +23,11 @@ GEM
     net-ssh (2.6.7)
     nokogiri (1.5.9)
     ruby-hmac (0.4.0)
+    timers (1.1.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  celluloid
   fog
