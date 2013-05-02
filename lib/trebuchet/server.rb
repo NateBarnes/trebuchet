@@ -1,19 +1,29 @@
 module Trebuchet
   class Server
-    attr_accessor :config, :connection, :instances, :siege_config
+    attr_accessor :concurrency, :config, :connections, :instances, :time, :url
 
     def initialize config=nil
       @config = config || YAML::load(File.open('trebuchet.yml'))
-      @siege_config = { :concurrency => 1, :url => "http://www.example.com", :time => "1M" }
-      @connection = Fog::Compute.new(:provider => "AWS", :aws_access_key_id => @config.fetch("aws-config", {}).fetch("access_key_id"), :aws_secret_access_key => @config.fetch("aws-config", {}).fetch("access_key_secret"))
+      @concurrency = "1"
+      @time = "1M"
+      @url = "http://www.example.com"
+      regions = @config.fetch("aws-config", {}).fetch("regions", ["us-east-1"])
+      @connections = []
+      regions.each do |region|
+        @connections << Fog::Compute.new(:provider => "AWS", :aws_access_key_id => @config.fetch("aws-config", {}).fetch("access_key_id"), :aws_secret_access_key => @config.fetch("aws-config", {}).fetch("access_key_secret"), :region => region)
+      end
       refresh_instances
     end
 
     def start num_of_servers=1
       puts "Starting #{num_of_servers} servers!"
+      futures = []
       num_of_servers.times do
-        @connection.servers.bootstrap(:public_key_path => '~/.ssh/id_rsa.pub', :username => 'ubuntu', :tags => {:temporary => true}) rescue Net::SSH::Disconnect
+        futures << Celluloid::Future.new do
+          @connections.sample.servers.bootstrap(:public_key_path => '~/.ssh/id_rsa.pub', :username => 'ubuntu', :tags => {:temporary => true}) rescue Net::SSH::Disconnect
+        end
       end
+      futures.each { |future| future.value }
       puts "#{num_of_servers} Servers Started!"
 
       refresh_instances
@@ -23,50 +33,48 @@ module Trebuchet
       puts "New instances configured and ready for use!"
     end
 
-    def stop_all
+    def stop
       @instances.each { |instance| instance.destroy }
     end
 
     def run
       puts "Beginning Load Test"
-      @instances.each { |instance| run_siege instance }
+      futures = []
+      @instances.each do |instance|
+        futures << Celluloid::Future.new { run_siege instance }
+      end
+      futures.each { |future| future.value }
 
       nil
     end
 
 private
     def refresh_instances
-      @instances = @connection.servers.select { |instance| instance.tags.fetch("temporary", false) and instance.state == "running" }
+      @instances = []
+      @connections.each do |connection|
+        new_instance = connection.servers.select { |instance| instance.tags.fetch("temporary", false) and instance.state == "running" }
+        @instances << new_instance unless new_instance.empty?
+      end
+      @instances.flatten!
+
+      nil
     end
 
     def setup_instance instance
       ssh = Net::SSH.start(instance.dns_name, "ubuntu")
-      res = ssh.exec! "sudo apt-get install siege"
+      ssh.exec! "sudo apt-get install siege"
+      ssh.exec! %{echo "verbose = false" > ~/.siegerc}
       ssh.close
     end
 
     def run_siege instance
       ssh = Net::SSH.start(instance.dns_name, "ubuntu")
-      cmd = "siege -c #{run_concurrency} -t #{run_time} #{run_url}"
-      puts "Executing Command: #{cmd}"
+      cmd = "siege -R ~/.siegerc -c #{concurrency} -t #{time} #{url}"
       res = ssh.exec! cmd
       ssh.close
       puts ""
-      puts "Instance #{instance.dns_name} Completed:"
       puts res
       puts ""
-    end
-
-    def run_concurrency
-      @siege_config.fetch :concurrency, 1
-    end
-
-    def run_time
-      @siege_config.fetch :time, "1M"
-    end
-
-    def run_url
-      @siege_config.fetch(:url, "http://localhost")
     end
   end
 end
