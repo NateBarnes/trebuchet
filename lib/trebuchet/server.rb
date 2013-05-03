@@ -3,7 +3,12 @@ module Trebuchet
     attr_accessor :concurrency, :config, :connections, :instances, :result, :time, :url
 
     def initialize config=nil
-      @config = config || YAML::load(File.open('trebuchet.yml'))
+      if File.exists?("trebuchet.yml")
+        file = File.open('trebuchet.yml')
+      elsif File.exists?("~/.trebuchet")
+        file = File.open("~/.trebuchet")
+      end
+      @config = config || YAML::load(file)
       @concurrency = "1"
       @time = "1M"
       @url = "http://www.example.com"

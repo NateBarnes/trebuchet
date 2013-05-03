@@ -1,2 +1,4 @@
 trebuchet.yml
 .DS_Store
+*.gem
+
