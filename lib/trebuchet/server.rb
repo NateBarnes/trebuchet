@@ -1,6 +1,6 @@
 module Trebuchet
   class Server
-    attr_accessor :concurrency, :config, :connections, :instances, :time, :url
+    attr_accessor :concurrency, :config, :connections, :instances, :result, :time, :url
 
     def initialize config=nil
       @config = config || YAML::load(File.open('trebuchet.yml'))
@@ -8,10 +8,12 @@ module Trebuchet
       @time = "1M"
       @url = "http://www.example.com"
       regions = @config.fetch("aws-config", {}).fetch("regions", ["us-east-1"])
+
       @connections = []
       regions.each do |region|
         @connections << Fog::Compute.new(:provider => "AWS", :aws_access_key_id => @config.fetch("aws-config", {}).fetch("access_key_id"), :aws_secret_access_key => @config.fetch("aws-config", {}).fetch("access_key_secret"), :region => region)
       end
+
       refresh_instances
     end
 
@@ -27,23 +29,27 @@ module Trebuchet
       puts "#{num_of_servers} Servers Started!"
 
       refresh_instances
-      puts "There are currently #{@instances.count} running instances"
+
       puts "Setting up new instances!"
       @instances.each { |instance| setup_instance instance }
+
       puts "New instances configured and ready for use!"
     end
 
     def stop
+      puts "Shutting down all instances"
       @instances.each { |instance| instance.destroy }
     end
 
     def run
       puts "Beginning Load Test"
+      @result = Trebuchet::Result.new
       futures = []
       @instances.each do |instance|
         futures << Celluloid::Future.new { run_siege instance }
       end
       futures.each { |future| future.value }
+      puts @result.to_s
 
       nil
     end
@@ -72,9 +78,8 @@ private
       cmd = "siege -R ~/.siegerc -c #{concurrency} -t #{time} #{url}"
       res = ssh.exec! cmd
       ssh.close
-      puts ""
       puts res
-      puts ""
+      #@result.add_parse(Trebuchet::Parser.new(res))
     end
   end
 end

@@ -1,4 +1,8 @@
 #! /usr/bin/env ruby
 # Trebuchet Command Line
 
-
+require "trebuchet"
+trebuchet = Trebuchet::Server.new
+if ARGV.include? "-s"
+  trebuchet.start
+end

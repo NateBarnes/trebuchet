@@ -1,5 +1,6 @@
 require 'trebuchet/server'
-require 'trebuchet/client'
+require 'trebuchet/parser'
+require 'trebuchet/result'
 require 'fog'
 require 'yaml'
 require 'net/ssh'
