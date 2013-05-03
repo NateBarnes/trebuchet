@@ -6,10 +6,10 @@ require "trebuchet"
 trebuchet = Trebuchet::Server.new
 servers = 1
 if ARGV.include? "-s"
-  servers = ARGV[ARGV.index("-s")+ 1]
+  servers = Integer(ARGV[ARGV.index("-s")+ 1])
 end
 if ARGV.include? "-c"
-  trebuchet.concurrency = ARGV[ARGV.index("-c")+ 1]
+  trebuchet.concurrency = Integer(ARGV[ARGV.index("-c")+ 1])
 end
 if ARGV.include? "-t"
   trebuchet.time = ARGV[ARGV.index("-t")+ 1]
