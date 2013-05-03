@@ -70,6 +70,8 @@ private
       ssh = Net::SSH.start(instance.dns_name, "ubuntu")
       ssh.exec! "sudo apt-get install siege"
       ssh.exec! %{echo "verbose = false" > ~/.siegerc}
+      ssh.exec! %{sudo sh -c "echo '*               hard    nofile            1000000' >> /etc/security/limits.conf"}
+      ssh.exec! %{sudo sh -c "echo '*               soft    nofile            1000000' >> /etc/security/limits.conf"}
       ssh.close
     end
 
@@ -78,8 +80,8 @@ private
       cmd = "siege -R ~/.siegerc -c #{concurrency} -t #{time} #{url}"
       res = ssh.exec! cmd
       ssh.close
-      puts res
-      #@result.add_parse(Trebuchet::Parser.new(res))
+      parse = Trebuchet::Parser.new(res)
+      @result.add_parse(parse)
     end
   end
 end

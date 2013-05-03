@@ -9,8 +9,14 @@ module Trebuchet
     def parse result
       data_lines = result.lines.to_a[4..-1]
       data_lines.each do |line|
-        method = "parse_#{line.split(":").first}".downcase.gsub(" ", "_")
+        method = "parse_#{line.split(":").first}".downcase.gsub(" ", "_").gsub("\b", "")
         send(method, line.split(":").last) if private_methods.include? method.to_sym
+      end
+      if @requests.nil? or @failed_requests.nil? or @rps.nil?
+        puts result
+        @requests = 0 if @requests.nil?
+        @failed_requests = 0 if @failed_requests.nil?
+        @rps = 0 if @rps.nil?
       end
     end
 
