@@ -3,7 +3,7 @@
 
 require "trebuchet"
 
-#trebuchet = Trebuchet::Server.new
+trebuchet = Trebuchet::Server.new
 servers = 1
 if ARGV.include? "-s"
   servers = ARGV[ARGV.index("-s")+ 1]
