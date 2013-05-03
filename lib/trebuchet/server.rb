@@ -39,6 +39,7 @@ module Trebuchet
     def stop
       puts "Shutting down all instances"
       @instances.each { |instance| instance.destroy }
+      refresh_instances
     end
 
     def run
